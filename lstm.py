@@ -1,7 +1,4 @@
-import numpy as np
-import random
-from datetime import datetime
-random.seed(datetime.now())
+from header import *
 
 class LSTM:
     def __init__(self, h_size, v_size):
@@ -37,35 +34,21 @@ class LSTM:
 
     def load(self, filename=None):
         if filename is None:
-            name = f"LSTM_Parameters_H{self.vocab_size}_V{self.vocab_size}.txt"
+            name = f"LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.txt"
         else:
             name = filename
 
-        h_size = self.hidden_size
-        v_size = self.vocab_size
-        z_size = h_size + v_size
-
         paramfile = open(name)
         for i in range(3): paramfile.readline()
-        
-        load_matrix(self.W_f, h_size, z_size, paramfile)
-        load_matrix(self.b_f, h_size, 1, paramfile)
-        load_matrix(self.W_i, h_size, z_size, paramfile)
-        load_matrix(self.b_i, h_size, 1, paramfile)
-        load_matrix(self.W_g, h_size, z_size, paramfile)
-        load_matrix(self.b_g, h_size, 1, paramfile)
-        load_matrix(self.W_o, h_size, z_size, paramfile)
-        load_matrix(self.b_o, h_size, 1, paramfile)
-        load_matrix(self.W_v, 1, h_size, paramfile)
-        load_matrix(self.b_v, 1, 1, paramfile)
+        for param in self.parameters(): load_matrix(param, paramfile)
         paramfile.close()
 
     def parameters(self):
-        return (self.W_f, self.W_i, self.W_g, self.W_o, self.W_v, self.b_f, self.b_i, self.b_g, self.b_o, self.b_v)
+        return self.W_f, self.b_f, self.W_i, self.b_i, self.W_g, self.b_g, self.W_o, self.b_o, self.W_v, self.b_v
 
     def forward(self, inputs, h_prev, C_prev):
 
-        W_f, W_i, W_g, W_o, W_v, b_f, b_i, b_g, b_o, b_v = self.parameters()
+        W_f, b_f, W_i, b_i, W_g, b_g, W_o, b_o, W_v, b_v = self.parameters()
 
         # Save a list of computations for each of the components in the LSTM
         x_s, z_s, f_s, i_s, = [], [], [], []
@@ -120,7 +103,7 @@ class LSTM:
         Args:
         """
         # First we unpack our parameters
-        W_f, W_i, W_g, W_o, W_v, b_f, b_i, b_g, b_o, b_v = self.parameters()
+        W_f, b_f, W_i, b_i, W_g, b_g, W_o, b_o, W_v, b_v = self.parameters()
 
         # Initialize gradients as zero
         W_f_d = np.zeros_like(W_f)
@@ -193,7 +176,7 @@ class LSTM:
             dh_prev = dz[:self.hidden_size, :]
             dC_prev = f[t] * dC
 
-        grads = W_f_d, W_i_d, W_g_d, W_o_d, W_v_d, b_f_d, b_i_d, b_g_d, b_o_d, b_v_d
+        grads = W_f_d, b_f_d, W_i_d, b_i_d, W_g_d, b_g_d, W_o_d, b_o_d, W_v_d, b_v_d
         grads = clip_gradient_norm(grads)
 
         return loss, grads
@@ -249,9 +232,9 @@ class LSTM:
             ham_detected = 0
             ham_undetected = 0
 
-            if ((i + 1) % 20 == 0):
-                W_f, W_i, W_g, W_o, W_v, b_f, b_i, b_g, b_o, b_v = self.parameters()
-                file = open(f"LSTM_Parameters_H{self.vocab_size}_V{self.vocab_size}.txt", "w")
+            if ((i + 1) % 50 == 0):
+                W_f, b_f, W_i, b_i, W_g, b_g, W_o, b_o, W_v, b_v  = self.parameters()
+                file = open(f"LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.txt", "w")
                 file.write(" ************* LSTM Model Parameters ************* \n")
 
                 file.write("\nW_f:\n")
@@ -279,88 +262,5 @@ class LSTM:
                 file.write("\nb_v matrix:\n")
                 file.write(matrix_to_string(b_v))
                 file.close()
-
-def matrix_to_string(mat):
-    result = ""
-    rows, cols = mat.shape
-
-    for row in range(rows):
-        for col in range(cols):
-            result += str(mat[row, col])
-            result += "\t"
-        result += "\n"
-
-    return result
-
-def load_matrix(mat, rows, cols, file):
-    mat = np.zeros((rows, cols))
-
-    for row in range(rows):
-        values = file.readline().strip().split("\t")
-        for col in range(cols):
-            mat[row, col] += float(values[col])
-
-    for i in range(2): file.readline()
-
-def sigmoid(x, derivative=False):
-    """
-    Computes the element-wise sigmoid activation function for an array x.
-    Args:
-     `x`: the array where the function is applied
-     `derivative`: if set to True will return the derivative instead of the forward pass
-    """
-    x_safe = x + 1e-5
-    f = 1 / (1 + np.exp(-x_safe))
-
-    if derivative:
-        # Return the derivative of the function evaluated at x
-        return f * (1 - f)
-    else:
-        # Return the forward pass of the function at x
-        return f
-
-def tanh(x, derivative=False):
-    """
-    Computes the element-wise tanh activation function for an array x.
-    Args:
-     `x`: the array where the function is applied
-     `derivative`: if set to True will return the derivative instead of the forward pass
-    """
-    x_safe = x + 1e-12
-    f = (np.exp(x_safe)-np.exp(-x_safe))/(np.exp(x_safe)+np.exp(-x_safe ))
-
-    if derivative:
-        # Return the derivative of the function evaluated at x
-        return 1-f**2
-    else:
-        # Return the forward pass of the function at x
-        return f
-
-def clip_gradient_norm(grads, max_norm=0.25):
-    """
-    Clips gradients to have a maximum norm of `max_norm`.
-    This is to prevent the exploding gradients problem.
-    """
-    # Set the maximum of the norm to be of type float
-    max_norm = float(max_norm)
-    total_norm = 0
-    # Calculate the L2 norm squared for each gradient and add them
-    # to the total norm
-    for grad in grads:
-        grad_norm = np.sum(np.power(grad, 2))
-        total_norm += grad_norm
-
-    total_norm = np.sqrt(total_norm)
-
-    # Calculate clipping coeficient
-    clip_coef = max_norm / (total_norm + 1e-5)
-
-    # If the total norm is larger than the maximum allowable norm,
-    # then clip the gradient
-    if clip_coef < 1:
-        for grad in grads:
-            grad *= clip_coef
-
-    return grads
 
 
