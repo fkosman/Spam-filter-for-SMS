@@ -1,5 +1,6 @@
 import numpy as np
 import os.path
+import sys
 from models.header import *
 
 class RNN:
@@ -25,27 +26,17 @@ class RNN:
     def parameters(self):
         return self.U, self.V, self.W, self.b_hidden, self.b_out
 
-    def load(self, filename=None):
-        if filename is None:
-            name = f"saved/RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
-        else:
-            name = "saved/" + filename + ".params"
+    def load(self, data, val_data, last_epoch, num_epochs, lr):
+        name = f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{last_epoch}.params"
 
         if not os.path.isfile(name):
-            print("No parameter file was found.")
-            return
+            sys.exit("No parameter file found for given hidden-size & epoch.")
 
         with open(name) as paramfile:
             paramfile.readline()
             for param in self.parameters(): load_matrix(param, paramfile)
 
-    def save(self, filename=None):
-        if filename is None:
-            name = f"saved/RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
-        else:
-            name = "saved/" + filename + ".params"
-
-        save_params(self.parameters(), name)
+        self.train(data, val_data, last_epoch + 1, num_epochs, lr)
 
     def forward(self, inputs):
 
@@ -81,10 +72,10 @@ class RNN:
 
         for t in reversed(range(len(outputs))):
             # Add loss
-            loss += np.absolute(outputs[t] - target)
+            loss += np.absolute(target- outputs[t])
 
             # Backpropogate into output
-            d_o = (outputs[t] - target) / np.absolute(outputs[t] - target + 1e-5)
+            d_o = (target - outputs[t]) / np.absolute(target - outputs[t] + 1e-5)
 
             d_o = d_o * sigmoid(outputs[t], derivative=True)
 
@@ -116,45 +107,67 @@ class RNN:
         for param, grad in zip(params, grads):
             param -= lr * grad
 
-    def train(self, data, num_epochs, lr):
-        data_len = len(data)
-        name = f"saved/RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
+    def train(self, data, val_data, start_epoch, num_epochs, lr):
+        val_len = len(val_data)
 
         for i in range(num_epochs):
 
-            current_epoch_loss = 0
+            training_loss = 0
             spam_detected = 0
             spam_undetected = 0
             ham_detected = 0
             ham_undetected = 0
 
             for x, y in data:
-                h = np.zeros((self.hidden_size, 1))
-                c = np.zeros((self.hidden_size, 1))
-
                 outputs, hidden_states = self.forward(x)
-                result = outputs[len(outputs) - 1]
 
                 loss, grads = self.backward(x, outputs, hidden_states, y)
-
-                if y == 1:
-                    if result >= 0.5:
-                        ham_detected += 1
-                    else:
-                        ham_undetected += 1
-                else:
-                    if result < 0.5:
-                        spam_detected += 1
-                    else:
-                        spam_undetected += 1
-
+                training_loss += loss
                 self.update(grads, lr)
 
-                current_epoch_loss += loss
+            validation_loss, spam_detected, spam_undetected, ham_detected, ham_undetected = self.eval(val_data)
+            training_loss /= len(data)
 
-            print_epoch(i + 1, current_epoch_loss, spam_detected,
-            spam_undetected, ham_detected, ham_undetected, data_len)
+            log = epoch_log(i + start_epoch, training_loss[0,0], validation_loss[0,0], spam_detected,
+            spam_undetected, ham_detected, ham_undetected, val_len, lr)
+
+            print(log, end="")
+            with open(f"logs/RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.log", "a") as logfile:
+                logfile.write(log)
 
             # Auto saves every 20 epochs during a training session
             if ((i + 1) % 20 == 0):
-                save_params(self.parameters(), name)
+                save_params(self.parameters(),
+                            f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
+
+            save_params(self.parameters(),
+                        f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
+
+    def eval(self, data):
+        validation_loss = 0
+        spam_detected = 0
+        spam_undetected = 0
+        ham_detected = 0
+        ham_undetected = 0
+
+        for x, y in data:
+            outputs, _ = self.forward(x)
+            result = outputs[len(outputs) - 1]
+            for output in outputs:
+                validation_loss += np.absolute(y - output)
+
+            if y == 1:
+                if result >= 0.5:
+                    ham_detected += 1
+                else:
+                    ham_undetected += 1
+            else:
+                if result < 0.5:
+                    spam_detected += 1
+                else:
+                    spam_undetected += 1
+
+        validation_loss /= len(data)
+
+        return validation_loss, spam_detected, spam_undetected, ham_detected, ham_undetected
+

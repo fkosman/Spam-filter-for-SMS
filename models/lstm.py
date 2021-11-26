@@ -1,5 +1,6 @@
 import numpy as np
 import os.path
+import sys
 from models.header import *
 
 class LSTM:
@@ -34,32 +35,22 @@ class LSTM:
         self.W_v = np.random.randn(1, h_size)
         self.b_v = np.zeros((1, 1))
 
-    def load(self, filename=None):
-        if filename is None:
-            name = f"saved/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
-        else:
-            name = "saved/" + filename + ".params"
+    def load(self, data, val_data, last_epoch, num_epochs, lr):
+        name = f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{last_epoch}.params"
 
         if not os.path.isfile(name):
-            print("No parameter file was found.")
-            return
+            sys.exit("No parameter file found for given hidden-size & epoch.")
         
         with open(name) as paramfile:
             paramfile.readline()
             for param in self.parameters(): load_matrix(param, paramfile)
 
-    def save(self, filename=None):
-        if filename is None:
-            name = f"saved/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
-        else:
-            name = "saved/" + filename + ".params"
-
-        save_params(self.parameters(), name)
+        self.train(data, val_data, last_epoch + 1, num_epochs, lr)
 
     def parameters(self):
         return self.W_f, self.b_f, self.W_i, self.b_i, self.W_g, self.b_g, self.W_o, self.b_o, self.W_v, self.b_v
 
-    def forward(self, inputs, h_prev, C_prev):
+    def forward(self, inputs):
 
         W_f, b_f, W_i, b_i, W_g, b_g, W_o, b_o, W_v, b_v = self.parameters()
 
@@ -69,6 +60,8 @@ class LSTM:
         v_s, output_s = [], []
 
         # Append the initial cell and hidden state to their respective lists
+        h_prev = np.zeros((self.hidden_size, 1))
+        C_prev = np.zeros((self.hidden_size, 1))
         h_s.append(h_prev)
         C_s.append(C_prev)
 
@@ -138,13 +131,13 @@ class LSTM:
 
         for t in reversed(range(len(outputs))):
             # Add loss
-            loss += np.absolute(outputs[t] - target)
+            loss += np.absolute(target - outputs[t])
 
             # Get the previous hidden cell state
             C_prev = C[t - 1]
 
             # Backpropogate into output
-            dv = (outputs[t] - target) / np.absolute(outputs[t] - target + 1e-5)
+            dv = (target - outputs[t]) / np.absolute(target - outputs[t] + 1e-5)
             dv = dv * sigmoid(outputs[t], derivative=True)
 
             # Update the gradient of the relation of the hidden-state to the output gatents
@@ -199,46 +192,64 @@ class LSTM:
         for param, grad in zip(params, grads):
             param -= lr * grad
 
-    def train(self, data, num_epochs, lr):
-        data_len = len(data)
-        name = f"saved/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
-        
+    def train(self, data, val_data, start_epoch, num_epochs, lr):
+        val_len = len(val_data)
+
         for i in range(num_epochs):
-            current_epoch_loss = 0
-            spam_detected = 0
-            spam_undetected = 0
-            ham_detected = 0
-            ham_undetected = 0
+            training_loss = 0
 
             for x, y in data:
-                h = np.zeros((self.hidden_size, 1))
-                c = np.zeros((self.hidden_size, 1))
-
-                z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, outputs = self.forward(x, h, c)
-                result = outputs[len(outputs) - 1]
+                z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, outputs = self.forward(x)
 
                 loss, grads = self.backward(z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, outputs, y)
-
-                if y == 1:
-                    if result >= 0.5:
-                        ham_detected += 1
-                    else:
-                        ham_undetected += 1
-                else:
-                    if result < 0.5:
-                        spam_detected += 1
-                    else:
-                        spam_undetected += 1
-
+                training_loss += loss
                 self.update(grads, lr)
 
-                current_epoch_loss += loss
-            print_epoch(i + 1, current_epoch_loss, spam_detected,
-                        spam_undetected, ham_detected, ham_undetected, data_len)
+            validation_loss, spam_detected, spam_undetected, ham_detected, ham_undetected = self.eval(val_data)
+            training_loss /= len(data)
+
+            log = epoch_log(i + start_epoch, training_loss[0,0], validation_loss[0,0], spam_detected,
+                        spam_undetected, ham_detected, ham_undetected, val_len, lr)
+
+            print(log, end="")
+            with open(f"logs/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.log", "a") as logfile:
+                logfile.write(log)
 
             # Auto saves every 20 epochs during a training session
             if ((i + 1) % 20 == 0):
-                save_params(self.parameters(), name)
-                
+                save_params(self.parameters(),
+                            f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
 
+        save_params(self.parameters(),
+                    f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
+
+    def eval(self, data):
+        validation_loss = 0
+        spam_detected = 0
+        spam_undetected = 0
+        ham_detected = 0
+        ham_undetected = 0
+
+        for x, y in data:
+            h = np.zeros((self.hidden_size, 1))
+            c = np.zeros((self.hidden_size, 1))
+            _, _, _, _, _, _, _, _, outputs = self.forward(x)
+            result = outputs[len(outputs) - 1]
+            for output in outputs:
+                validation_loss += np.absolute(y - output)
+
+            if y == 1:
+                if result >= 0.5:
+                    ham_detected += 1
+                else:
+                    ham_undetected += 1
+            else:
+                if result < 0.5:
+                    spam_detected += 1
+                else:
+                    spam_undetected += 1
+
+        validation_loss /= len(data)
+
+        return validation_loss, spam_detected, spam_undetected, ham_detected, ham_undetected
 
