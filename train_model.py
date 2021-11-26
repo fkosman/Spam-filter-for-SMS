@@ -11,12 +11,12 @@ if len(sys.argv) != 5:
     sys.exit("\nInvalid command line arguments.\n" +
              "Must enter: hidden-size, learning-rate, starting epoch, # of epochs\n")
 
-hidden_size = sys.argv[1]
-lr = sys.argv[2]
-start_epoch = sys.argv[3]
-num_epochs = sys.argv[4]
+hidden_size = int(sys.argv[1])
+lr = float(sys.argv[2])
+start_epoch = int(sys.argv[3])
+num_epochs = int(sys.argv[4])
 
-if hidden_size < 1 or lr < 1 or start_epoch < 1 or num_epochs < 1:
+if hidden_size < 1 or lr <= 0 or start_epoch < 1 or num_epochs < 1:
     sys.exit("Arguments must be positive numbers")
 
 validation_set = []
