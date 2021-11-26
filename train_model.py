@@ -7,6 +7,18 @@ from models.header import *
 from models.rnn import RNN
 from models.lstm import LSTM
 
+if len(sys.argv) != 5:
+    sys.exit("\nInvalid command line arguments.\n" +
+             "Must enter: hidden-size, learning-rate, starting epoch, # of epochs\n")
+
+hidden_size = sys.argv[1]
+lr = sys.argv[2]
+start_epoch = sys.argv[3]
+num_epochs = sys.argv[4]
+
+if hidden_size < 1 or lr < 1 or start_epoch < 1 or num_epochs < 1:
+    sys.exit("Arguments must be positive numbers")
+
 validation_set = []
 with open('datasets/validation_set.csv', encoding = "ISO-8859-1") as csvfile:
     spamreader = csv.reader(csvfile)
@@ -51,18 +63,6 @@ for item in training_set:
         half_n_half.append(item)
         num_spam += 1
     if num_ham == 500 and num_spam == 500: break
-
-if len(sys.argv) != 5:
-    sys.exit("Invalid command line arguments.\n" +
-             "Must enter: hidden-size, learning-rate, starting epoch, # of epochs")
-
-hidden_size = sys.argv[1]
-lr = sys.argv[2]
-start_epoch = sys.argv[3]
-num_epochs = sys.argv[4]
-
-if hidden_size < 1 or lr < 1 or start_epoch < 1 or num_epochs < 1:
-    sys.exit("Arguments must be positive numbers")
 
 model = LSTM(hidden_size, vocab_size)
 
