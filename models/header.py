@@ -120,17 +120,19 @@ def clip_gradient_norm(grads, max_norm=0.25):
 
     return grads
 
-def print_epoch(epoch, epoch_loss, spam_detected,
-                spam_undetected, ham_detected, ham_undetected, data_len):
+def epoch_log(epoch, training_loss, validation_loss, spam_detected,
+                spam_undetected, ham_detected, ham_undetected, data_len, lr):
+    result = "\n**********************************************************\n"
+    result += f"Epoch {epoch}\nLR = {lr}\n"
+    result += f"Training loss: {training_loss}\n"
+    result += f"Validation loss: {validation_loss}\n"
+    result += f"Prediction accuracy: {100 * (ham_detected + spam_detected) / data_len}%\n"
+    result += "{:<40}{:>4}\n".format("Correctly classified regular messages: ", ham_detected)
+    result += "{:<40}{:>4}\n".format("Misclassified regular messages: ", ham_undetected)
+    result += "{:<40}{:>4}\n".format("Correctly classified spam messages: ", spam_detected)
+    result += "{:<40}{:>4}".format("Misclassified spam messages: ", spam_undetected)
 
-    print(f"Epoch {epoch}:")
-    print(f"Training loss = {epoch_loss / data_len},", end='')
-    print(f" prediction accuracy = {100 * (ham_detected + spam_detected) / data_len}%")
-    print("{:<40}{:>4}, ".format("Correctly classified regular messages: ", ham_detected), end='')
-    print("{:<35}{:>4}".format(" misclassified regular messages: ", ham_undetected))
-    print("{:<40}{:>4}, ".format("Correctly classified spam messages: ", spam_detected), end='')
-    print("{:<35}{:>4}".format(" misclassified spam messages: ", spam_undetected))
-    print("*****************************************************")
+    return result
 
 def matrix_to_string(mat):
     result = ""
@@ -155,7 +157,7 @@ def load_matrix(mat, file):
 def save_params(params, name):
     file = open(name, "w")
 
-    file.write("**************** Model Parameters ****************")
+    file.write("{:^}".format("**************** Model Parameters ****************"))
     for param in params:
         file.write(matrix_to_string(param))
     file.close()
