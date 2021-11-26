@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import os.path
 import sys
 from models.header import *
@@ -210,18 +211,24 @@ class LSTM:
 
             log = epoch_log(i + start_epoch, training_loss[0,0], validation_loss[0,0], spam_detected,
                         spam_undetected, ham_detected, ham_undetected, val_len, lr)
-
             print(log, end="")
-            with open(f"logs/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.log", "a") as logfile:
+
+            with open(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 1}.log", "a") as logfile:
                 logfile.write(log)
+            os.rename(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 1}.log",
+                      f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.log")
 
             # Auto saves every 20 epochs during a training session
             if ((i + 1) % 20 == 0):
                 save_params(self.parameters(),
                             f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
+                os.remove(f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 20}.params")
 
-        save_params(self.parameters(),
-                    f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
+        current_epoch = start_epoch + num_epochs - 1
+        if current_epoch % 20 != 0:
+            save_params(self.parameters(),
+                        f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch}.params")
+            os.remove(f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - (current_epoch % 20)}.params")
 
     def eval(self, data):
         validation_loss = 0

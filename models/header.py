@@ -122,7 +122,10 @@ def clip_gradient_norm(grads, max_norm=0.25):
 
 def epoch_log(epoch, training_loss, validation_loss, spam_detected,
                 spam_undetected, ham_detected, ham_undetected, data_len, lr):
-    result = "\n**********************************************************\n"
+
+    if epoch == 1: result = ""
+    else: result = "\n**********************************************************\n"
+    
     result += f"Epoch {epoch}\nLR = {lr}\n"
     result += f"Training loss: {training_loss}\n"
     result += f"Validation loss: {validation_loss}\n"
