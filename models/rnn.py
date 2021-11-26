@@ -30,7 +30,7 @@ class RNN:
         name = f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{last_epoch}.params"
 
         if not os.path.isfile(name):
-            sys.exit("No parameter file found for given hidden-size & epoch.")
+            sys.exit("\nNo parameter file found for given hidden-size & epoch.\n")
 
         with open(name) as paramfile:
             paramfile.readline()
