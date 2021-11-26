@@ -1,4 +1,6 @@
-from header import *
+import numpy as np
+import os.path
+from models.header import *
 
 class LSTM:
     def __init__(self, h_size, v_size):
@@ -34,14 +36,25 @@ class LSTM:
 
     def load(self, filename=None):
         if filename is None:
-            name = f"LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.txt"
+            name = f"saved/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
         else:
-            name = filename
+            name = "saved/" + filename + ".params"
 
-        paramfile = open(name)
-        for i in range(3): paramfile.readline()
-        for param in self.parameters(): load_matrix(param, paramfile)
-        paramfile.close()
+        if not os.path.isfile(name):
+            print("No parameter file was found.")
+            return
+        
+        with open(name) as paramfile:
+            paramfile.readline()
+            for param in self.parameters(): load_matrix(param, paramfile)
+
+    def save(self, filename=None):
+        if filename is None:
+            name = f"saved/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
+        else:
+            name = "saved/" + filename + ".params"
+
+        save_params(self.parameters(), name)
 
     def parameters(self):
         return self.W_f, self.b_f, self.W_i, self.b_i, self.W_g, self.b_g, self.W_o, self.b_o, self.W_v, self.b_v
@@ -187,8 +200,10 @@ class LSTM:
             param -= lr * grad
 
     def train(self, data, num_epochs, lr):
+        data_len = len(data)
+        name = f"saved/LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
+        
         for i in range(num_epochs):
-
             current_epoch_loss = 0
             spam_detected = 0
             spam_undetected = 0
@@ -218,49 +233,12 @@ class LSTM:
                 self.update(grads, lr)
 
                 current_epoch_loss += loss
-            print(f"Epoch {i + 1}:")
-            print(f"Training loss = {current_epoch_loss / len(data)},", end='')
-            print(f" prediction accuracy = {100 * (ham_detected + spam_detected) / len(data)}%")
-            print("{:<38}{:>4}, ".format("Correctly classified regular messages: ", ham_detected), end='')
-            print("{:<32}{:>4}".format(" misclassified regular messages: ",ham_undetected))
-            print("{:<38}{:>4}, ".format("Correctly classified spam messages: ", spam_detected), end='')
-            print("{:<32}{:>4}".format(" misclassified spam messages: ", spam_undetected))
-            print("*****************************************************")
-            current_epoch_loss = 0
-            spam_detected = 0
-            spam_undetected = 0
-            ham_detected = 0
-            ham_undetected = 0
+            print_epoch(i + 1, current_epoch_loss, spam_detected,
+                        spam_undetected, ham_detected, ham_undetected, data_len)
 
-            if ((i + 1) % 50 == 0):
-                W_f, b_f, W_i, b_i, W_g, b_g, W_o, b_o, W_v, b_v  = self.parameters()
-                file = open(f"LSTM_Parameters_H{self.hidden_size}_V{self.vocab_size}.txt", "w")
-                file.write(" ************* LSTM Model Parameters ************* \n")
-
-                file.write("\nW_f:\n")
-                file.write(matrix_to_string(W_f))
-                file.write("\nb_f matrix:\n")
-                file.write(matrix_to_string(b_f))
-
-                file.write("\nW_i matrix:\n")
-                file.write(matrix_to_string(W_i))
-                file.write("\nb_i matrix:\n")
-                file.write(matrix_to_string(b_i))
-
-                file.write("\nW_g matrix:\n")
-                file.write(matrix_to_string(W_g))
-                file.write("\nb_g matrix:\n")
-                file.write(matrix_to_string(b_g))
-
-                file.write("\nW_o matrix:\n")
-                file.write(matrix_to_string(W_o))
-                file.write("\nb_o matrix:\n")
-                file.write(matrix_to_string(b_o))
+            # Auto saves every 20 epochs during a training session
+            if ((i + 1) % 20 == 0):
+                save_params(self.parameters(), name)
                 
-                file.write("\nW_v matrix:\n")
-                file.write(matrix_to_string(W_v))
-                file.write("\nb_v matrix:\n")
-                file.write(matrix_to_string(b_v))
-                file.close()
 
 

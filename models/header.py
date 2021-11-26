@@ -1,7 +1,63 @@
 import numpy as np
-import random
-from datetime import datetime
-random.seed(datetime.now())
+
+vocab_size = 30
+
+def char_to_index(c):
+    # Number of characters in our vocabulary is 30
+    # (26 letters + punctuation + numbers + white space + all others)
+    char_num = ord(c)
+
+    if char_num > 64 and char_num < 91:
+        return char_num - 65
+
+    if char_num > 96 and char_num < 123:
+        return char_num - 97
+
+    if char_num > 47 and char_num < 58:
+        return 26
+
+    if char_num < 33:
+        return 27
+
+    if char_num > 32 and char_num < 128:
+        return 28
+
+    return 29
+
+
+def encode_char(c):
+    one_hot_encoded = np.zeros((vocab_size, 1))
+    one_hot_encoded[char_to_index(c), 0] = 1
+    return one_hot_encoded
+
+
+def decode_char(encoded):
+    for i in range(vocab_size):
+        if encoded[i, 0] == 1:
+            break
+
+    if i == 29:
+        return '@'
+
+    if i == 28:
+        return ','
+
+    if i == 27:
+        return ' '
+
+    if i == 26:
+        return '5'
+
+    return chr(65 + i)
+
+
+def decode_string(inputs):
+    str = ""
+    for input in inputs:
+        str += decode_char(input)
+
+    return str
+
 
 def sigmoid(x, derivative=False):
     """
@@ -64,15 +120,27 @@ def clip_gradient_norm(grads, max_norm=0.25):
 
     return grads
 
+def print_epoch(epoch, epoch_loss, spam_detected,
+                spam_undetected, ham_detected, ham_undetected, data_len):
+
+    print(f"Epoch {epoch}:")
+    print(f"Training loss = {epoch_loss / data_len},", end='')
+    print(f" prediction accuracy = {100 * (ham_detected + spam_detected) / data_len}%")
+    print("{:<40}{:>4}, ".format("Correctly classified regular messages: ", ham_detected), end='')
+    print("{:<35}{:>4}".format(" misclassified regular messages: ", ham_undetected))
+    print("{:<40}{:>4}, ".format("Correctly classified spam messages: ", spam_detected), end='')
+    print("{:<35}{:>4}".format(" misclassified spam messages: ", spam_undetected))
+    print("*****************************************************")
+
 def matrix_to_string(mat):
     result = ""
     rows, cols = mat.shape
 
     for row in range(rows):
+        result += "\n"
         for col in range(cols):
             result += str(mat[row, col])
             result += "\t"
-        result += "\n"
 
     return result
 
@@ -84,4 +152,10 @@ def load_matrix(mat, file):
         for col in range(cols):
             mat[row, col] = float(values[col])
 
-    for i in range(2): file.readline()
+def save_params(params, name):
+    file = open(name, "w")
+
+    file.write("**************** Model Parameters ****************")
+    for param in params:
+        file.write(matrix_to_string(param))
+    file.close()

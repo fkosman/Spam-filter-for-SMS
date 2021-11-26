@@ -1,4 +1,6 @@
-from header import *
+import numpy as np
+import os.path
+from models.header import *
 
 class RNN:
     def __init__(self, h_size, v_size):
@@ -25,17 +27,25 @@ class RNN:
 
     def load(self, filename=None):
         if filename is None:
-            name = f"RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.txt"
+            name = f"saved/RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
         else:
-            name = filename
+            name = "saved/" + filename + ".params"
 
-        h_size = self.hidden_size
-        v_size = self.vocab_size
+        if not os.path.isfile(name):
+            print("No parameter file was found.")
+            return
 
-        paramfile = open(name)
-        for i in range(3): paramfile.readline()
-        for param in self.parameters(): load_matrix(param, paramfile)
-        paramfile.close()
+        with open(name) as paramfile:
+            paramfile.readline()
+            for param in self.parameters(): load_matrix(param, paramfile)
+
+    def save(self, filename=None):
+        if filename is None:
+            name = f"saved/RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
+        else:
+            name = "saved/" + filename + ".params"
+
+        save_params(self.parameters(), name)
 
     def forward(self, inputs):
 
@@ -49,36 +59,22 @@ class RNN:
             hidden_state = (U @ inputs[t]) + (V @ hidden_state) + b_h
 
             # Normalize hidden state
-            # hidden_state = hidden_state - hidden_state.mean()
-            # hidden_state = hidden_state / (hidden_state.std() + 1e-5)
             hidden_state = tanh(hidden_state)
 
             out = sigmoid((W @ hidden_state) + b)
 
             outputs.append(out)
             hidden_states.append(hidden_state.copy())
-            # print(f"Hidden state before: {hidden_state}")
-            # hidden_state = normalize(hidden_state, 2)
-            # print(f"Hidden state after: {hidden_state}")
-            # hidden_state /= np.linalg.norm(hidden_state)
-            # hidden_state = hidden_state * 2
 
         return outputs, hidden_states
 
     def backward(self, inputs, outputs, hidden_states, target):
-        """
-        Computes the backward pass of a vanilla RNN.
-        Args:
-        `inputs`: sequence of inputs to be processed
-        `outputs`: sequence of outputs from the forward pass `hidden_states`: sequence of hidden_states from the forward pass `targets`: sequence of targets
-        `params`: the parameters of the RNN
-        """
-        # First we unpack our parameters
         U, V, W, b_h, b = self.parameters()
 
         # Initialize gradients as zero
         d_U, d_V, d_W = np.zeros_like(U), np.zeros_like(V), np.zeros_like(W)
         d_b_hidden, d_b_out = np.zeros_like(b_h), np.zeros_like(b)
+
         # Keep track of hidden state derivative and loss
         d_h_next = np.zeros_like(hidden_states[0])
         loss = 0
@@ -121,6 +117,9 @@ class RNN:
             param -= lr * grad
 
     def train(self, data, num_epochs, lr):
+        data_len = len(data)
+        name = f"saved/RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.params"
+
         for i in range(num_epochs):
 
             current_epoch_loss = 0
@@ -153,33 +152,9 @@ class RNN:
 
                 current_epoch_loss += loss
 
-            print(f"Epoch {i + 1}:")
-            print(f"Training loss = {current_epoch_loss / len(data)},", end='')
-            print(f" prediction accuracy = {100 * (ham_detected + spam_detected) / len(data)}%")
-            print("{:<38}{:>4}, ".format("Correctly classified regular messages: ", ham_detected), end='')
-            print("{:<32}{:>4}".format(" misclassified regular messages: ", ham_undetected))
-            print("{:<38}{:>4}, ".format("Correctly classified spam messages: ", spam_detected), end='')
-            print("{:<32}{:>4}".format(" misclassified spam messages: ", spam_undetected))
-            print("*****************************************************")
-            current_epoch_loss = 0
-            spam_detected = 0
-            spam_undetected = 0
-            ham_detected = 0
-            ham_undetected = 0
+            print_epoch(i + 1, current_epoch_loss, spam_detected,
+            spam_undetected, ham_detected, ham_undetected, data_len)
 
-            if ((i + 1) % 50 == 0):
-                U, V, W, b_hidden, b_out = self.parameters()
-                file = open(f"RNN_Parameters_H{self.hidden_size}_V{self.vocab_size}.txt", "w")
-                file.write(" ************* RNN Model Parameters ************* \n")
-
-                file.write("\nU matrix:\n")
-                file.write(matrix_to_string(U))
-                file.write("\nV matrix:\n")
-                file.write(matrix_to_string(V))
-                file.write("\nW matrix:\n")
-                file.write(matrix_to_string(W))
-                file.write("\nb_hidden matrix:\n")
-                file.write(matrix_to_string(b_hidden))
-                file.write("\nb_out matrix:\n")
-                file.write(matrix_to_string(b_out))
-                file.close()
+            # Auto saves every 20 epochs during a training session
+            if ((i + 1) % 20 == 0):
+                save_params(self.parameters(), name)
