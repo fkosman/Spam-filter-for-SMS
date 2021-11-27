@@ -2,6 +2,9 @@ import numpy as np
 import os
 import os.path
 import sys
+import random
+from datetime import datetime
+random.seed(datetime.now())
 from models.header import *
 
 class LSTM:
@@ -36,8 +39,8 @@ class LSTM:
         self.W_v = np.random.randn(1, h_size)
         self.b_v = np.zeros((1, 1))
 
-    def load(self, data, val_data, last_epoch, num_epochs, lr):
-        name = f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{last_epoch}.params"
+    def load(self, data, val_data, start_epoch, num_epochs, lr):
+        name = f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch - 1}.params"
 
         if not os.path.isfile(name):
             sys.exit("\nNo parameter file found for given hidden-size & epoch.\n")
@@ -46,7 +49,7 @@ class LSTM:
             paramfile.readline()
             for param in self.parameters(): load_matrix(param, paramfile)
 
-        self.train(data, val_data, last_epoch + 1, num_epochs, lr)
+        self.train(data, val_data, start_epoch, num_epochs, lr)
 
     def parameters(self):
         return self.W_f, self.b_f, self.W_i, self.b_i, self.W_g, self.b_g, self.W_o, self.b_o, self.W_v, self.b_v
@@ -138,7 +141,7 @@ class LSTM:
             C_prev = C[t - 1]
 
             # Backpropogate into output
-            dv = (target - outputs[t]) / np.absolute(target - outputs[t] + 1e-5)
+            dv = -(target - outputs[t]) / np.absolute(target - outputs[t] + 1e-5)
             dv = dv * sigmoid(outputs[t], derivative=True)
 
             # Update the gradient of the relation of the hidden-state to the output gatents
@@ -197,6 +200,8 @@ class LSTM:
         val_len = len(val_data)
 
         for i in range(num_epochs):
+            current_epoch = start_epoch + i
+            random.shuffle(data)
             training_loss = 0
 
             for x, y in data:
@@ -213,22 +218,29 @@ class LSTM:
                         spam_undetected, ham_detected, ham_undetected, val_len, lr)
             print(log, end="")
 
-            with open(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 1}.log", "a") as logfile:
+            with open(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - 1}.log", "a") as logfile:
                 logfile.write(log)
-            os.rename(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 1}.log",
-                      f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.log")
+            os.rename(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - 1}.log",
+                      f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch}.log")
 
             # Auto saves every 20 epochs during a training session
-            if ((i + 1) % 20 == 0):
+            if ((current_epoch) % 20 == 0):
                 save_params(self.parameters(),
-                            f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
-                os.remove(f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 20}.params")
+                            f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch}.params")
+                if current_epoch > 20:
+                    if current_epoch - (start_epoch - 1) >= 20:
+                        os.remove(
+                        f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - 20}.params")
+                    else:
+                        os.remove(
+                        f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch - 1}.params")
 
-        current_epoch = start_epoch + num_epochs - 1
         if current_epoch % 20 != 0:
             save_params(self.parameters(),
                         f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch}.params")
-            os.remove(f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - (current_epoch % 20)}.params")
+            if current_epoch > 20:
+                os.remove(
+                f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - (current_epoch % 20)}.params")
 
     def eval(self, data):
         validation_loss = 0

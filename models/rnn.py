@@ -2,6 +2,9 @@ import numpy as np
 import os
 import os.path
 import sys
+import random
+from datetime import datetime
+random.seed(datetime.now())
 from models.header import *
 
 class RNN:
@@ -27,8 +30,8 @@ class RNN:
     def parameters(self):
         return self.U, self.V, self.W, self.b_hidden, self.b_out
 
-    def load(self, data, val_data, last_epoch, num_epochs, lr):
-        name = f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{last_epoch}.params"
+    def load(self, data, val_data, start_epoch, num_epochs, lr):
+        name = f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch - 1}.params"
 
         if not os.path.isfile(name):
             sys.exit("\nNo parameter file found for given hidden-size & epoch.\n")
@@ -37,7 +40,7 @@ class RNN:
             paramfile.readline()
             for param in self.parameters(): load_matrix(param, paramfile)
 
-        self.train(data, val_data, last_epoch + 1, num_epochs, lr)
+        self.train(data, val_data, start_epoch, num_epochs, lr)
 
     def forward(self, inputs):
 
@@ -73,10 +76,10 @@ class RNN:
 
         for t in reversed(range(len(outputs))):
             # Add loss
-            loss += np.absolute(target- outputs[t])
+            loss += np.absolute(target - outputs[t])
 
             # Backpropogate into output
-            d_o = (target - outputs[t]) / np.absolute(target - outputs[t] + 1e-5)
+            d_o = -(target - outputs[t]) / np.absolute(target - outputs[t] + 1e-5)
 
             d_o = d_o * sigmoid(outputs[t], derivative=True)
 
@@ -112,12 +115,9 @@ class RNN:
         val_len = len(val_data)
 
         for i in range(num_epochs):
-
+            current_epoch = start_epoch + i
+            random.shuffle(data)
             training_loss = 0
-            spam_detected = 0
-            spam_undetected = 0
-            ham_detected = 0
-            ham_undetected = 0
 
             for x, y in data:
                 outputs, hidden_states = self.forward(x)
@@ -130,25 +130,32 @@ class RNN:
             training_loss /= len(data)
 
             log = epoch_log(i + start_epoch, training_loss[0,0], validation_loss[0,0], spam_detected,
-            spam_undetected, ham_detected, ham_undetected, val_len, lr)
+                            spam_undetected, ham_detected, ham_undetected, val_len, lr)
             print(log, end="")
             
-            with open(f"logs/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 1}.log", "a") as logfile:
+            with open(f"logs/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch - 1}.log", "a") as logfile:
                 logfile.write(log)
-            os.rename(f"logs/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 1}.log",
-                      f"logs/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.log")
+            os.rename(f"logs/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch - 1}.log",
+                      f"logs/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch}.log")
 
             # Auto saves every 20 epochs during a training session
-            if ((i + 1) % 20 == 0):
+            if ((current_epoch) % 20 == 0):
                 save_params(self.parameters(),
-                            f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch + i}.params")
-                os.remove(f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch + i - 20}.params")
+                            f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch}.params")
+                if current_epoch > 20:
+                    if current_epoch - (start_epoch - 1) >= 20:
+                        os.remove(
+                        f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch - 20}.params")
+                    else:
+                        os.remove(
+                        f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{start_epoch - 1}.params")
 
-        current_epoch = start_epoch + num_epochs - 1
         if current_epoch % 20 != 0:
             save_params(self.parameters(),
                         f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch}.params")
-            os.remove(f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch - (current_epoch % 20)}.params")
+            if current_epoch > 20:
+                os.remove(
+                f"saved/RNN_Parameters_H{self.hidden_size}_Epoch{current_epoch - (current_epoch % 20)}.params")
 
     def eval(self, data):
         validation_loss = 0
