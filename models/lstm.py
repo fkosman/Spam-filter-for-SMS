@@ -6,12 +6,16 @@ import random
 from datetime import datetime
 random.seed(datetime.now())
 from models.header import *
+from vocabulary import *
 
 class LSTM:
     def __init__(self, h_size, v_size):
         self.hidden_size = h_size
         self.vocab_size = v_size
+        self.epochs_trained = 0
         z_size = h_size + v_size
+
+        self.name = f"LSTM_{self.hidden_size}Hidden_{self.vocab_size}Vocab"
 
         # Weight matrix (forget gate)
         self.W_f = np.random.randn(h_size, z_size)
@@ -39,7 +43,33 @@ class LSTM:
         self.W_v = np.random.randn(1, h_size)
         self.b_v = np.zeros((1, 1))
 
-    def load(self, data, val_data, start_epoch, num_epochs, lr):
+    def save(self):
+        if os.path.isfile("saved/" + self.name + ".params"):
+            print("\nA parameter file for a model with the same architecture already exists.")
+            ans = input("Do you want to overwrite it? (y/n): ")
+
+            while ans.lower() != "y" and ans.lower() != "n" and ans.lower() != "yes" and ans.lower() != "no":
+                print("Invalid input.")
+                print("A parameter file with the name \"" + self.name + "\" already exists.")
+                ans = input("Do you want to overwrite it? (y/n): ")
+            if ans.lower() == "y" or ans.lower() == "yes":
+                save_params(self)
+            else:
+                return
+
+        save_params(self)
+
+    def load(self):
+        if not os.path.isfile("saved/" + self.name + ".params"):
+            sys.exit("\nNo parameter file found for this model.\n")
+
+        with open("saved/" + self.name + ".params") as paramfile:
+            paramfile.readline()
+            epochs = paramfile.readline().strip().split()
+            self.epochs_trained = int(epochs[1])
+            for param in self.parameters(): load_matrix(param, paramfile)
+
+    def continue_training(self, data, val_data, start_epoch, num_epochs, lr):
         name = f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch - 1}.params"
 
         if not os.path.isfile(name):
@@ -55,7 +85,7 @@ class LSTM:
         return self.W_f, self.b_f, self.W_i, self.b_i, self.W_g, self.b_g, self.W_o, self.b_o, self.W_v, self.b_v
 
     def forward(self, inputs):
-
+        
         W_f, b_f, W_i, b_i, W_g, b_g, W_o, b_o, W_v, b_v = self.parameters()
 
         # Save a list of computations for each of the components in the LSTM
@@ -101,8 +131,8 @@ class LSTM:
             v = (W_v @ h_prev) + b_v
             v_s.append(v)
 
-            # Calculate sigmoid activation
-            output = sigmoid(v)
+            # Calculate activation
+            output = tanh(v)
             output_s.append(output)
 
         return z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, output_s
@@ -131,20 +161,14 @@ class LSTM:
         dh_next = np.zeros_like(h[0])
         dC_next = np.zeros_like(C[0])
 
-        loss = 0
+        result = outputs[len(outputs) - 1]
+        loss = 10 * np.absolute(target - result)
 
         for t in reversed(range(len(outputs))):
-            # Add loss
-            loss += np.absolute(target - outputs[t])
+            dv = -(target - outputs[t]) / (np.absolute(target - outputs[t]) + 1e-15)
+            dv = dv * tanh(v[t], derivative=True)
 
-            # Get the previous hidden cell state
-            C_prev = C[t - 1]
-
-            # Backpropogate into output
-            dv = -(target - outputs[t]) / np.absolute(target - outputs[t] + 1e-5)
-            dv = dv * sigmoid(outputs[t], derivative=True)
-
-            # Update the gradient of the relation of the hidden-state to the output gatents
+            # Update the gradient of the relation of the hidden-state to the output gate
             W_v_d += (dv @ h[t].T)
             b_v_d += dv
 
@@ -174,6 +198,8 @@ class LSTM:
             W_i_d += (di @ z[t].T)
             b_i_d += di
 
+            # Get the previous hidden cell state
+            C_prev = C[t - 1]
             # Compute the derivative of the forget gate and update its gradients
             df = dC * C_prev
             df = sigmoid(f[t]) * df
@@ -196,11 +222,11 @@ class LSTM:
         for param, grad in zip(params, grads):
             param -= lr * grad
 
-    def train(self, data, val_data, start_epoch, num_epochs, lr):
+    def train(self, data, val_data, num_epochs, lr):
         val_len = len(val_data)
 
         for i in range(num_epochs):
-            current_epoch = start_epoch + i
+            self.epochs_trained += 1
             random.shuffle(data)
             training_loss = 0
 
@@ -214,33 +240,18 @@ class LSTM:
             validation_loss, spam_detected, spam_undetected, ham_detected, ham_undetected = self.eval(val_data)
             training_loss /= len(data)
 
-            log = epoch_log(i + start_epoch, training_loss[0,0], validation_loss[0,0], spam_detected,
+            log = epoch_log(self.epochs_trained, training_loss[0,0], validation_loss[0,0], spam_detected,
                         spam_undetected, ham_detected, ham_undetected, val_len, lr)
             print(log, end="")
 
-            with open(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - 1}.log", "a") as logfile:
+            with open(f"logs/{self.name}.log", "a") as logfile:
                 logfile.write(log)
-            os.rename(f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - 1}.log",
-                      f"logs/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch}.log")
 
             # Auto saves every 20 epochs during a training session
-            if ((current_epoch) % 20 == 0):
-                save_params(self.parameters(),
-                            f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch}.params")
-                if current_epoch > 20:
-                    if current_epoch - (start_epoch - 1) >= 20:
-                        os.remove(
-                        f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - 20}.params")
-                    else:
-                        os.remove(
-                        f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch - 1}.params")
+            if ((self.epochs_trained) % 20 == 0):
+                save_params(self)
 
-        if current_epoch % 20 != 0:
-            save_params(self.parameters(),
-                        f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch}.params")
-            if current_epoch > 20:
-                os.remove(
-                f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{current_epoch - (current_epoch % 20)}.params")
+        save_params(self)
 
     def eval(self, data):
         validation_loss = 0
@@ -253,20 +264,20 @@ class LSTM:
             h = np.zeros((self.hidden_size, 1))
             c = np.zeros((self.hidden_size, 1))
             _, _, _, _, _, _, _, _, outputs = self.forward(x)
-            result = outputs[len(outputs) - 1]
-            for output in outputs:
-                validation_loss += np.absolute(y - output)
 
+            result = outputs[len(outputs) - 1]
             if y == 1:
-                if result >= 0.5:
+                if result >= 0:
                     ham_detected += 1
                 else:
                     ham_undetected += 1
             else:
-                if result < 0.5:
+                if result < 0:
                     spam_detected += 1
                 else:
                     spam_undetected += 1
+
+            validation_loss += 10 * np.absolute(y - result)
 
         validation_loss /= len(data)
 
