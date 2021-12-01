@@ -1,74 +1,79 @@
 import sys
+import os.path
 import csv
 import random
 from datetime import datetime
 random.seed(datetime.now())
+from vocabulary import *
 from models.header import *
 from models.rnn import RNN
 from models.lstm import LSTM
 
-if len(sys.argv) != 5:
+if len(sys.argv) != 4:
     sys.exit("\nInvalid command line arguments.\n" +
-             "Must enter: hidden-size, learning-rate, starting epoch, # of epochs\n")
+             "Must enter: hidden-size, learning-rate, # of epochs\n")
 
 hidden_size = int(sys.argv[1])
 lr = float(sys.argv[2])
-start_epoch = int(sys.argv[3])
-num_epochs = int(sys.argv[4])
+num_epochs = int(sys.argv[3])
 
-if hidden_size < 1 or lr <= 0 or start_epoch < 1 or num_epochs < 1:
+if hidden_size < 1 or lr <= 0 or num_epochs < 1:
     sys.exit("Arguments must be positive numbers")
 
+vocabulary = []
+with open('data/vocabulary.txt') as vocabfile:
+    vocabfile.readline()
+    vocabfile.readline()
+    for line in vocabfile:
+        line = line[:-1]
+        vocabulary.append(line)
+
 validation_set = []
-with open('datasets/validation_set.csv', encoding = "ISO-8859-1") as csvfile:
+with open('data/validation_set.csv', encoding = "ISO-8859-1") as csvfile:
     spamreader = csv.reader(csvfile)
     for row in spamreader:
         break
     for row in spamreader:
-        entry = []
-        for c in row[1]:
-            entry.append(encode_char(c))
-
         if row[0] == "ham":
-            validation_set.append((entry, 1))
+            validation_set.append((encode_string(row[1], vocabulary), 1))
         else:
-            validation_set.append((entry, 0))
+            validation_set.append((encode_string(row[1], vocabulary), -1))
 
+"""
+for (message, _), orig in zip(validation_set, original):
+    print("\nOriginal message:")
+    print(orig)
+    print("\"Encoded\" message (what the model sees):")
+    print(decode_string(message, vocabulary) + "\n")
+"""
+            
 training_set = []
-with open('datasets/training_set.csv', encoding = "ISO-8859-1") as csvfile:
+with open('data/training_set.csv', encoding = "ISO-8859-1") as csvfile:
     spamreader = csv.reader(csvfile)
     for row in spamreader:
         break
     for row in spamreader:
-        entry = []
-        for c in row[1]:
-            entry.append(encode_char(c))
-
         if row[0] == "ham":
-            training_set.append((entry, 1))
+            training_set.append((encode_string(row[1], vocabulary), 1))
         else:
-            training_set.append((entry, 0))
+            training_set.append((encode_string(row[1], vocabulary), -1))
 
-random.shuffle(training_set)
-random.shuffle(training_set)
-
-half_n_half = []
-num_spam = 0
-num_ham = 0
-for item in training_set:
-    if item[1] == 1 and num_ham < 500:
-        half_n_half.append(item)
-        num_ham += 1
-    if item[1] == 0 and num_spam < 500:
-        half_n_half.append(item)
-        num_spam += 1
-    if num_ham == 500 and num_spam == 500: break
+balanced_training_set = []
+with open('data/balanced_set.csv', encoding = "ISO-8859-1") as csvfile:
+    spamreader = csv.reader(csvfile)
+    for row in spamreader:
+        break
+    for row in spamreader:
+        if row[0] == "ham":
+            balanced_training_set.append((encode_string(row[1], vocabulary), 1))
+        else:
+            balanced_training_set.append((encode_string(row[1], vocabulary), -1))
 
 model = LSTM(hidden_size, vocab_size)
 
-if start_epoch == 1:
-    model.train(half_n_half, validation_set, start_epoch, num_epochs, lr)
-else:
-    model.load(half_n_half, validation_set, start_epoch, num_epochs, lr)
-print("\nEnd of training\n")
+if os.path.isfile("saved/" + model.name + ".params"):
+    model.load()
 
+model.train(balanced_training_set, validation_set, num_epochs, lr)
+
+print("\nEnd of training\n")
