@@ -1,64 +1,5 @@
 import numpy as np
 
-vocab_size = 30
-
-def char_to_index(c):
-    # Number of characters in our vocabulary is 30
-    # (26 letters + punctuation + numbers + white space + all others)
-    char_num = ord(c)
-
-    if char_num > 64 and char_num < 91:
-        return char_num - 65
-
-    if char_num > 96 and char_num < 123:
-        return char_num - 97
-
-    if char_num > 47 and char_num < 58:
-        return 26
-
-    if char_num < 33:
-        return 27
-
-    if char_num > 32 and char_num < 128:
-        return 28
-
-    return 29
-
-
-def encode_char(c):
-    one_hot_encoded = np.zeros((vocab_size, 1))
-    one_hot_encoded[char_to_index(c), 0] = 1
-    return one_hot_encoded
-
-
-def decode_char(encoded):
-    for i in range(vocab_size):
-        if encoded[i, 0] == 1:
-            break
-
-    if i == 29:
-        return '@'
-
-    if i == 28:
-        return ','
-
-    if i == 27:
-        return ' '
-
-    if i == 26:
-        return '5'
-
-    return chr(65 + i)
-
-
-def decode_string(inputs):
-    str = ""
-    for input in inputs:
-        str += decode_char(input)
-
-    return str
-
-
 def sigmoid(x, derivative=False):
     """
     Computes the element-wise sigmoid activation function for an array x.
@@ -66,7 +7,7 @@ def sigmoid(x, derivative=False):
      `x`: the array where the function is applied
      `derivative`: if set to True will return the derivative instead of the forward pass
     """
-    x_safe = x + 1e-5
+    x_safe = x + 1e-15
     f = 1 / (1 + np.exp(-x_safe))
 
     if derivative:
@@ -83,7 +24,7 @@ def tanh(x, derivative=False):
      `x`: the array where the function is applied
      `derivative`: if set to True will return the derivative instead of the forward pass
     """
-    x_safe = x + 1e-12
+    x_safe = x + 1e-15
     f = (np.exp(x_safe)-np.exp(-x_safe))/(np.exp(x_safe)+np.exp(-x_safe ))
 
     if derivative:
@@ -110,7 +51,7 @@ def clip_gradient_norm(grads, max_norm=0.25):
     total_norm = np.sqrt(total_norm)
 
     # Calculate clipping coeficient
-    clip_coef = max_norm / (total_norm + 1e-5)
+    clip_coef = max_norm / (total_norm + 1e-15)
 
     # If the total norm is larger than the maximum allowable norm,
     # then clip the gradient
@@ -157,10 +98,11 @@ def load_matrix(mat, file):
         for col in range(cols):
             mat[row, col] = float(values[col])
 
-def save_params(params, name):
-    file = open(name, "w")
+def save_params(model):
+    file = open("saved/" + model.name + ".params", "w")
 
     file.write("{:^}".format("**************** Model Parameters ****************"))
-    for param in params:
+    file.write(f"\nEpochs: {model.epochs_trained}")
+    for param in model.parameters():
         file.write(matrix_to_string(param))
     file.close()
