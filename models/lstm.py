@@ -1,3 +1,5 @@
+from models.header import *
+from vocabulary import *
 import numpy as np
 import os
 import os.path
@@ -5,8 +7,7 @@ import sys
 import random
 from datetime import datetime
 random.seed(datetime.now())
-from models.header import *
-from vocabulary import *
+
 
 class LSTM:
     def __init__(self, h_size, v_size):
@@ -68,18 +69,6 @@ class LSTM:
             epochs = paramfile.readline().strip().split()
             self.epochs_trained = int(epochs[1])
             for param in self.parameters(): load_matrix(param, paramfile)
-
-    def continue_training(self, data, val_data, start_epoch, num_epochs, lr):
-        name = f"saved/LSTM_Parameters_H{self.hidden_size}_Epoch{start_epoch - 1}.params"
-
-        if not os.path.isfile(name):
-            sys.exit("\nNo parameter file found for given hidden-size & epoch.\n")
-        
-        with open(name) as paramfile:
-            paramfile.readline()
-            for param in self.parameters(): load_matrix(param, paramfile)
-
-        self.train(data, val_data, start_epoch, num_epochs, lr)
 
     def parameters(self):
         return self.W_f, self.b_f, self.W_i, self.b_i, self.W_g, self.b_g, self.W_o, self.b_o, self.W_v, self.b_v

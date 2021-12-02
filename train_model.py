@@ -1,13 +1,13 @@
+from vocabulary import *
+from models.header import *
+from models.rnn import RNN
+from models.lstm import LSTM
 import sys
 import os.path
 import csv
 import random
 from datetime import datetime
 random.seed(datetime.now())
-from vocabulary import *
-from models.header import *
-from models.rnn import RNN
-from models.lstm import LSTM
 
 if len(sys.argv) != 4:
     sys.exit("\nInvalid command line arguments.\n" +
@@ -28,12 +28,14 @@ with open('data/vocabulary.txt') as vocabfile:
         line = line[:-1]
         vocabulary.append(line)
 
+#original = []
 validation_set = []
 with open('data/validation_set.csv', encoding = "ISO-8859-1") as csvfile:
     spamreader = csv.reader(csvfile)
     for row in spamreader:
         break
     for row in spamreader:
+        #original.append(row[1])
         if row[0] == "ham":
             validation_set.append((encode_string(row[1], vocabulary), 1))
         else:
