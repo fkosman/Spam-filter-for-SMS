@@ -41,9 +41,26 @@ def generate_vocab():
             final_vocab.append(ham_vocab[i])
         else:
             final_vocab.append(spam_vocab[i])
-    final_vocab.append("[?UNKNOWN?]")
-        
+
+    final_vocab.append("[!EMPTY!]")
     return final_vocab
+
+def most_common_words(messages):
+    frequencies = {}
+    vocabulary = []
+
+    for message in messages:
+        words = message.split()
+        for wor in words:
+            w = simplify_word(wor)
+            if w not in vocabulary:
+                vocabulary.append(w)
+                frequencies[w] = 1
+            else:
+                frequencies[w] += 1
+
+    most_common = dict(sorted(frequencies.items(), key=operator.itemgetter(1), reverse=True))
+    return [item for item in most_common.items()]
 
 def simplify_char(c):
     # Number of characters represented is 30
@@ -76,36 +93,10 @@ def simplify_word(w):
 
 def simplify_string(str):
     result = []
-    for wor in str.split():
-        result.append(simplify_word(wor))
+    for w in str.split():
+        result.append(simplify_word(w))
 
     return result
-
-def most_common_words(messages):
-    frequencies = {}
-    vocabulary = []
-
-    for message in messages:
-        words = message.split()
-        for wor in words:
-            w = simplify_word(wor)
-            if w not in vocabulary:
-                vocabulary.append(w)
-                frequencies[w] = 1
-            else:
-                frequencies[w] += 1
-
-    most_common = dict(sorted(frequencies.items(), key=operator.itemgetter(1), reverse=True))
-    return [item for item in most_common.items()]
-
-with open("data/vocabulary.txt", "w") as vocab_file:
-    vocab = generate_vocab()
-    vocab_file.write("Training vocabulary:\n")
-
-    for word in vocab:
-        vocab_file.write("\n" + word)
-
-    vocab_file.write("\n")
 
 def encode_word(w, vocab):
     one_hot_encoded = np.zeros((vocab_size, 1))
@@ -118,22 +109,25 @@ def encode_string(str, vocab):
     i = 0
     while i < len(words):
         if words[i] not in vocab:
-            while i < len(words) - 1 and words[i + 1] not in vocab:
-                words.pop(i)
-
-        i += 1
+            words.pop(i)
+        else:
+            i += 1
 
     encoded = []
     for item in words:
         encoded.append(encode_word(item, vocab))
+
+    if len(encoded) == 0:
+        encoded.append(encode_word(vocab[-1], vocab))
+
     return encoded
 
 def decode_word(encoded, vocab):
     for i in range(vocab_size):
         if encoded[i, 0] == 1:
-            break
+            return vocab[i]
 
-    return vocab[i]
+    return vocab[-1]
 
 def decode_string(inputs, vocab):
     str = ""
@@ -143,8 +137,17 @@ def decode_string(inputs, vocab):
     return str
 
 def word_to_index(w, vocab):
-    for i in range(vocab_size - 1):
+    for i in range(vocab_size):
         if w == vocab[i]:
             return i
 
-    return vocab_size - 1
+    return -1
+
+with open("data/vocabulary.txt", "w") as vocab_file:
+    vocab = generate_vocab()
+    vocab_file.write("Training vocabulary:\n")
+
+    for word in vocab:
+        vocab_file.write("\n" + word)
+
+    vocab_file.write("\n")
