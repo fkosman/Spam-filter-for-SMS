@@ -2,8 +2,8 @@ import numpy as np
 import csv
 import operator
 
-vocab_size = 500
-redundant_vocab_size = 100
+vocab_size = 1000
+redundant_vocab_size = 60
 
 def generate_vocab():
     spam_messages = []
@@ -36,11 +36,21 @@ def generate_vocab():
 
     final_vocab = []
 
-    for i in range(vocab_size - 1):
-        if i % 2 == 0:
+    i = 0
+    j = 0
+    turn = 0
+    while len(final_vocab) < vocab_size - 1:
+        if turn % 2 == 0:
+            while ham_vocab[i] in final_vocab:
+                i += 1
             final_vocab.append(ham_vocab[i])
+            i += 1
         else:
-            final_vocab.append(spam_vocab[i])
+            while spam_vocab[j] in final_vocab:
+                j += 1
+            final_vocab.append(spam_vocab[j])
+            j += 1
+        turn += 1
 
     final_vocab.append("[!EMPTY!]")
     return final_vocab
