@@ -1,24 +1,48 @@
 from vocabulary import *
 from models.header import *
-from models.rnn import RNN
 from models.lstm import LSTM
-import sys
-import os.path
 import csv
-import random
-from datetime import datetime
-random.seed(datetime.now())
 
-if len(sys.argv) != 4:
-    sys.exit("\nInvalid command line arguments.\n" +
-             "Must enter: hidden-size, learning-rate, # of epochs\n")
+print("\nDo you want to start training a new model, or continue with an existing one?")
+print("(1) Train new model")
+print("(2) Load existing model")
+ans = int(input(""))
 
-hidden_size = int(sys.argv[1])
-lr = float(sys.argv[2])
-num_epochs = int(sys.argv[3])
+while ans != 1 and ans != 2:
+    print("Invalid choice.")
+    print("\nDo you want to start training a new model, or continue with an existing one?")
+    print("(1) Train new model")
+    print("(2) Load existing model")
+    ans = int(input(""))
 
-if hidden_size < 1 or lr <= 0 or num_epochs < 1:
-    sys.exit("Arguments must be positive numbers")
+if ans == 1:
+    name = input("\nName the model\n(Leave blank and press 'Enter' to use default naming scheme): ")
+    while len(name.split()) != 1:
+        print("Name can't contain whitespace.")
+        name = input("\nName the model\n(Leave blank and press 'Enter' to use default naming scheme): ")
+
+    hidden_size = int(input("\nSelect the hidden layer size: "))
+    while hidden_size < 1:
+        print("Hidden layer size can't be less than 1.")
+        hidden_size = int(input("\nSelect the hidden layer size: "))
+
+    model = LSTM(hidden_size, vocab_size, name)
+
+else:
+    name = input("\nEnter the model name: ")
+    model = LSTM(0,0,name, load=True)
+
+    
+lr = float(input("\nSelect the learning rate: "))
+while lr < 0:
+    print("Learning rate can't be less than 0.")
+    lr = float(input("\nSelect the learning rate: "))
+
+num_epochs = int(input("\nSelect the number of training epochs: "))
+while num_epochs < 1:
+    print("Number of epochs can't be less than 1.")
+    num_epochs = int(input("\nSelect the number of epochs: "))
+
 
 vocabulary = []
 with open('data/vocabulary.txt') as vocabfile:
@@ -28,26 +52,16 @@ with open('data/vocabulary.txt') as vocabfile:
         line = line[:-1]
         vocabulary.append(line)
 
-#original = []
 validation_set = []
 with open('data/validation_set.csv', encoding = "ISO-8859-1") as csvfile:
     spamreader = csv.reader(csvfile)
     for row in spamreader:
         break
     for row in spamreader:
-        #original.append(row[1])
         if row[0] == "ham":
             validation_set.append((encode_string(row[1], vocabulary), 1))
         else:
             validation_set.append((encode_string(row[1], vocabulary), -1))
-
-"""
-for (message, _), orig in zip(validation_set, original):
-    print("\nOriginal message:")
-    print(orig)
-    print("\"Encoded\" message (what the model sees):")
-    print(decode_string(message, vocabulary) + "\n")
-"""
             
 training_set = []
 with open('data/training_set.csv', encoding = "ISO-8859-1") as csvfile:
@@ -71,11 +85,20 @@ with open('data/balanced_set.csv', encoding = "ISO-8859-1") as csvfile:
         else:
             balanced_training_set.append((encode_string(row[1], vocabulary), -1))
 
-model = LSTM(hidden_size, vocab_size)
+print("\nDo you want to train with the complete training set, or the balanced one?")
+print("(1) Full training dataset")
+print("(2) Balanced training dataset")
+ans = int(input(""))
+while ans != 1 and ans != 2:
+    print("Invalid choice.")
+    print("\nDo you want to train with the complete training set, or the balanced one?")
+    print("(1) Full training dataset")
+    print("(2) Balanced training dataset")
+    ans = int(input(""))
 
-if os.path.isfile("saved/" + model.name + ".params"):
-    model.load()
-
-model.train(balanced_training_set, validation_set, num_epochs, lr)
+if ans == 1:
+    model.train(training_set, validation_set, num_epochs, lr)
+else:
+    model.train(balanced_training_set, validation_set, num_epochs, lr)
 
 print("\nEnd of training\n")
