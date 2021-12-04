@@ -100,7 +100,7 @@ def load_matrix(mat, file):
             mat[row, col] = float(values[col])
 
 def save_params(model):
-    file = open("saved/" + model.name + ".params", "w")
+    file = open("../saved/" + model.name + ".params", "w")
 
     file.write("{:^}".format("**************** Model Parameters ****************"))
     file.write(f"\nEpochs: {model.epochs_trained}")

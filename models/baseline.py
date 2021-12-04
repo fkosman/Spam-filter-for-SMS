@@ -1,4 +1,4 @@
-from models.header import *
+from header import *
 from vocabulary import *
 
 class Baseline:

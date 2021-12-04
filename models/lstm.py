@@ -1,5 +1,5 @@
-from models.header import *
 from vocabulary import *
+from header import *
 import numpy as np
 import os
 import os.path
@@ -8,16 +8,15 @@ import random
 from datetime import datetime
 random.seed(datetime.now())
 
-
 class LSTM:
 
     def __init__(self, h_size, v_size, name, load=False):
         if load:
             self.name = name
-            if not os.path.isfile("saved/" + self.name + ".params"):
+            if not os.path.isfile("../saved/" + self.name + ".params"):
                 sys.exit("\nNo parameter file found for this model.\n")
 
-            with open("saved/" + self.name + ".params") as paramfile:
+            with open("../saved/" + self.name + ".params") as paramfile:
                 paramfile.readline()
                 vals = paramfile.readline().strip().split()
                 self.epochs_trained = int(vals[1])
@@ -66,7 +65,7 @@ class LSTM:
             self.load()
 
     def save(self):
-        if os.path.isfile("saved/" + self.name + ".params"):
+        if os.path.isfile("../saved/" + self.name + ".params"):
             print("\nA parameter file for a model with the same architecture already exists.")
             ans = input("Do you want to overwrite it? (y/n): ")
 
@@ -82,7 +81,7 @@ class LSTM:
         save_params(self)
 
     def load(self):
-        with open("saved/" + self.name + ".params") as paramfile:
+        with open("../saved/" + self.name + ".params") as paramfile:
             paramfile.readline()
             paramfile.readline()
             for param in self.parameters(): load_matrix(param, paramfile)
@@ -260,7 +259,7 @@ class LSTM:
                         spam_undetected, ham_detected, ham_undetected, validation_accuracy, training_accuracy, lr)
             print(log, end="")
 
-            with open(f"logs/{self.name}.log", "a") as logfile:
+            with open(f"../logs/{self.name}.log", "a") as logfile:
                 logfile.write(log)
 
             # Auto saves every 20 epochs during a training session
