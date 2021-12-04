@@ -10,13 +10,31 @@ random.seed(datetime.now())
 
 
 class LSTM:
-    def __init__(self, h_size, v_size):
-        self.hidden_size = h_size
-        self.vocab_size = v_size
-        self.epochs_trained = 0
-        z_size = h_size + v_size
 
-        self.name = f"LSTM_{self.hidden_size}Hidden_{self.vocab_size}Vocab"
+    def __init__(self, h_size, v_size, name, load=False):
+        if load:
+            self.name = name
+            if not os.path.isfile("saved/" + self.name + ".params"):
+                sys.exit("\nNo parameter file found for this model.\n")
+
+            with open("saved/" + self.name + ".params") as paramfile:
+                paramfile.readline()
+                vals = paramfile.readline().strip().split()
+                self.epochs_trained = int(vals[1])
+                h_size = int(vals[3])
+                v_size = int(vals[5])
+            self.hidden_size = h_size
+            self.vocab_size = v_size
+            z_size = h_size + v_size
+        else:
+            self.hidden_size = h_size
+            self.vocab_size = v_size
+            if name:
+                self.name = name
+            else:
+                self.name = f"LSTM_{self.hidden_size}Hidden_{self.vocab_size}Vocab"
+            self.epochs_trained = 0
+            z_size = h_size + v_size
 
         # Weight matrix (forget gate)
         self.W_f = np.random.randn(h_size, z_size)
@@ -44,6 +62,9 @@ class LSTM:
         self.W_v = np.random.randn(1, h_size)
         self.b_v = np.zeros((1, 1))
 
+        if load:
+            self.load()
+
     def save(self):
         if os.path.isfile("saved/" + self.name + ".params"):
             print("\nA parameter file for a model with the same architecture already exists.")
@@ -61,13 +82,9 @@ class LSTM:
         save_params(self)
 
     def load(self):
-        if not os.path.isfile("saved/" + self.name + ".params"):
-            sys.exit("\nNo parameter file found for this model.\n")
-
         with open("saved/" + self.name + ".params") as paramfile:
             paramfile.readline()
-            epochs = paramfile.readline().strip().split()
-            self.epochs_trained = int(epochs[1])
+            paramfile.readline()
             for param in self.parameters(): load_matrix(param, paramfile)
 
     def parameters(self):
@@ -213,24 +230,34 @@ class LSTM:
 
     def train(self, data, val_data, num_epochs, lr):
         val_len = len(val_data)
+        train_len = len(data)
 
         for i in range(num_epochs):
             self.epochs_trained += 1
             random.shuffle(data)
             training_loss = 0
+            num_correct = 0
 
             for x, y in data:
                 z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, outputs = self.forward(x)
+                result = outputs[len(outputs) - 1]
+                if y == 1 and result >= 0:
+                    num_correct += 1
+                if y == -1 and result < 0:
+                    num_correct += 1
 
                 loss, grads = self.backward(z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, outputs, y)
                 training_loss += loss
                 self.update(grads, lr)
 
             validation_loss, spam_detected, spam_undetected, ham_detected, ham_undetected = self.eval(val_data)
-            training_loss /= len(data)
+            validation_accuracy = 100 * (ham_detected + spam_detected) / val_len
+
+            training_loss /= train_len
+            training_accuracy = 100 * num_correct / train_len
 
             log = epoch_log(self.epochs_trained, training_loss[0,0], validation_loss[0,0], spam_detected,
-                        spam_undetected, ham_detected, ham_undetected, val_len, lr)
+                        spam_undetected, ham_detected, ham_undetected, validation_accuracy, training_accuracy, lr)
             print(log, end="")
 
             with open(f"logs/{self.name}.log", "a") as logfile:
