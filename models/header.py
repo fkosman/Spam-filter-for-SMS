@@ -62,7 +62,7 @@ def clip_gradient_norm(grads, max_norm=0.25):
     return grads
 
 def epoch_log(epoch, training_loss, validation_loss, spam_detected,
-                spam_undetected, ham_detected, ham_undetected, data_len, lr):
+                spam_undetected, ham_detected, ham_undetected, val_acc, train_acc, lr):
 
     if epoch == 1: result = ""
     else: result = "\n**********************************************************\n"
@@ -70,7 +70,8 @@ def epoch_log(epoch, training_loss, validation_loss, spam_detected,
     result += f"Epoch {epoch}\nLR = {lr}\n"
     result += f"Training loss: {training_loss}\n"
     result += f"Validation loss: {validation_loss}\n"
-    result += f"Prediction accuracy: {100 * (ham_detected + spam_detected) / data_len}%\n"
+    result += f"Training accuracy: {train_acc}%\n"
+    result += f"Validation accuracy: {val_acc}%\n"
     result += "{:<40}{:>4}\n".format("Correctly classified regular messages: ", ham_detected)
     result += "{:<40}{:>4}\n".format("Misclassified regular messages: ", ham_undetected)
     result += "{:<40}{:>4}\n".format("Correctly classified spam messages: ", spam_detected)
@@ -103,6 +104,8 @@ def save_params(model):
 
     file.write("{:^}".format("**************** Model Parameters ****************"))
     file.write(f"\nEpochs: {model.epochs_trained}")
+    file.write(f"\tHidden: {model.hidden_size}")
+    file.write(f"\tVocab: {model.vocab_size}")
     for param in model.parameters():
         file.write(matrix_to_string(param))
     file.close()
