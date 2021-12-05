@@ -53,7 +53,7 @@ You can plot the data logged so far for a model's training by running the follow
 ```
 python plot_epochs.py [MODEL NAME]
 ```
-This will produce to plots, one for the loss and one for the accuracy, with the respect to all epochs the given model has trained over.
+This will produce two plots, one for the loss and one for the accuracy, with the respect to all epochs the given model has trained over.
 
 
 ## Evaluation against baseline
@@ -63,4 +63,4 @@ To compare a model's performance against the validation set along with a baselin
 python eval_model.py [MODEL NAME]
 ```
 The accuracies, precisions, recalls, and F-scores of the given model will be displayed along with those of the baseline.
-The baseline uses a list of keywords to determine if a message is spam. You can edit the keywords list by opening "eval_model.py" and editing the constructor for the baseline model.
+The baseline uses a list of keywords to determine if a message is spam. You can choose your own keywords list by opening "eval_model.py" and editing the constructor for the baseline model.
