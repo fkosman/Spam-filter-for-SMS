@@ -40,7 +40,9 @@ You will be prompted to name the model and select its hidden size, as well as th
 
 ## Resuming training
 
-After creating a new model and training it for some number of epochs, you can resume training the same model by simply running  ```python train_model.py``` again and entering the name of the model when prompted. The program will continue training the model where it left off, using the last parameters from the most recent training session, and will continue updating the epoch logs accordingly.
+After creating a new model and training it for some number of epochs, you can resume training the same model by simply running  ```python train_model.py``` again and entering the name of the model when prompted. The program will continue training the model where it left off, using the last parameters from the most recent training session, and will continue updating the epoch logs accordingly. This means you do not need to conduct all the model's training at once, and can split the total number of epochs between separate sessions.
+
+Model parameters are saved in the "saved" directory, while epoch logs can be viewed in the "logs" directory.
 
 
 ## Testing the model
