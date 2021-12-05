@@ -38,6 +38,11 @@ python train_model.py
 You will be prompted to name the model and select its hidden size, as well as the training hyperparameters. Select an appropiate name as it will be used in saving parameters, logging the epoch data, and for evaluation or testing.
 
 
+## Resuming training
+
+After creating a new model and training it for some number of epochs, you can resume training the same model by simply running  ```python train_model.py``` again and entering the name of the model when prompted. The program will continue training the model where it left off, using the last parameters from the most recent training session, and will continue updating the epoch logs accordingly.
+
+
 ## Testing the model
 
 "test_model.py" allows you to test an existing model with manually entered sample inputs. To use it, run:
