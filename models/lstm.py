@@ -76,7 +76,7 @@ class LSTM:
             if ans.lower() == "y" or ans.lower() == "yes":
                 save_params(self)
             else:
-                return
+                sys.exit("\nSave failed.\n")
 
         save_params(self)
 
