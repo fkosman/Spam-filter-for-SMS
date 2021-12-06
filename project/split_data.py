@@ -17,7 +17,7 @@ random.shuffle(raw_data)
 num_spam = 0
 num_ham = 0
 training_data = []
-with open("../data/validation_set.csv", "w") as validation_file:
+with open("../data/validation_set.csv", "w", newline='', encoding="ISO-8859-1") as validation_file:
     validation_file.write("v1,v2,,,\n")
 
     validation_writer = csv.writer(validation_file)
@@ -36,7 +36,7 @@ with open("../data/validation_set.csv", "w") as validation_file:
 random.shuffle(training_data)
 random.shuffle(training_data)
 
-with open("../data/training_set.csv", "w") as training_file:
+with open("../data/training_set.csv", "w", newline='', encoding="ISO-8859-1") as training_file:
     training_file.write("v1,v2,,,\n")
 
     training_writer = csv.writer(training_file)
@@ -61,7 +61,7 @@ for row in training_data:
 random.shuffle(balanced_data)
 random.shuffle(balanced_data)
 
-with open("../data/balanced_set.csv", "w") as balanced_file:
+with open("../data/balanced_set.csv", "w", newline='', encoding="ISO-8859-1") as balanced_file:
     balanced_file.write("v1,v2,,,\n")
 
     balanced_writer = csv.writer(balanced_file)

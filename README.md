@@ -71,3 +71,9 @@ python eval_model.py [MODEL NAME]
 ```
 The accuracies, precisions, recalls, and F-scores of the given model will be displayed along with those of the baseline.
 The baseline uses a list of keywords to determine if a message is spam. You can choose your own keywords list by opening "eval_model.py" and editing the constructor for the baseline model.
+
+
+## LSTM model used in report
+
+The LSTM model I used for the evaluation in the report is saved as "final_model", with the parameters and logs available. If you wish to run tests using that model, then you can do so by running ```test_model.py```, ```eval_model.py``` and ```plot_epochs.py``` with "final_model" as the command line argument. 
+(Note: the current validation/training split is not the one I used while training the model, so the evaluation results might differ slightly from the ones in the report)

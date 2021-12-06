@@ -153,7 +153,7 @@ def word_to_index(w, vocab):
 
     return -1
 
-with open("../data/vocabulary.txt", "w") as vocab_file:
+with open("../data/vocabulary.txt", "w", newline='', encoding='utf-8') as vocab_file:
     vocab = generate_vocab()
     vocab_file.write("Training vocabulary:\n")
 
