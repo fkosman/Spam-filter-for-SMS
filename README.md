@@ -1,6 +1,10 @@
 # SMS Message Spam Filter
 
-Before doing anything, you will first need to install NumPy and MatPlot. Enter the following commands into the command line:
+Before doing anything, you will first need to make sure you have Python version 3.6 or later installed. If you do not already have it installed, then you can do so by first installing Homebrew and then using it to install Python (if MacOS user). Alternatively, you can download an installer for python 3.6.0 from this link: 
+
+https://www.python.org/downloads/release/python-360/
+
+Once you have python installed, you will also need to install NumPy and MatPlot. Enter the following commands into the command terminal or powershell:
 
 ```
 pip install numpy
